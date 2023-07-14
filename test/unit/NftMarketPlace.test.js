@@ -62,19 +62,51 @@ const { expect, assert } = require("chai");
           ).to.emit("ItemListed");
         });
 
-        it("exclusively items that haven't been listed", async () => {
-          await nftMarketPlace.listItem(basicNft.getAddress(), TOKEN_ID, PRICE);
-          const address = await basicNft.getAddress();
-          // const error = `AlreadyListed`;
-          const error = `NftMarketPlace__AlreadyListed(${address}, ${TOKEN_ID})`;
-          console.log(
-            `NftMarketPlace__AlreadyListed(${address}, ${TOKEN_ID})`,
-            "`NftMarketPlace__AlreadyListed(${address}, ${TOKEN_ID})`"
+        // it("exclusively items that haven't been listed", async () => {
+        //   await nftMarketPlace.listItem(basicNft.getAddress(), TOKEN_ID, PRICE);
+        //   // const error = `NftMarketPlace__AlreadyListed(${basicNft.getAddress()}, ${TOKEN_ID})`;
+        //   await expect(
+        //     nftMarketPlace.listItem(basicNft.getAddress(), TOKEN_ID, PRICE)
+        //   ).to.be.revertedWithCustomError(
+        //     nftMarketPlace,
+        //     `NftMarketPlace__AlreadyListed(${basicNft.getAddress()}, ${TOKEN_ID})`
+        //   );
+        // });
+
+        it("allows only owner to list item", async () => {
+          nftMarketPlace = nftMarketPlace.connect(player);
+          await basicNft.approve(player.getAddress(), TOKEN_ID);
+
+          await expect(
+            nftMarketPlace.listItem(basicNft.getAddress(), TOKEN_ID, PRICE)
+          ).to.be.revertedWithCustomError(
+            nftMarketPlace,
+            "NftMarketPlace__NotOwner"
+          );
+        });
+
+        it("needs approvals to list an item", async () => {
+          await basicNft.approve(
+            "0xe7f1725e7734ce288f8367e1bb143e90bb3f0513",
+            TOKEN_ID
           );
 
           await expect(
             nftMarketPlace.listItem(basicNft.getAddress(), TOKEN_ID, PRICE)
-          ).to.be.revertedWithCustomError(nftMarketPlace, error);
+          ).to.be.revertedWithCustomError(
+            nftMarketPlace,
+            "NftMarketPlace__NotApprovedForMarketPlace"
+          );
+        });
+
+        it("updates listing with seller and price", async () => {
+          await nftMarketPlace.listItem(basicNft.getAddress(), TOKEN_ID, PRICE);
+          const listing = await nftMarketPlace.getListing(
+            basicNft.getAddress(),
+            TOKEN_ID
+          );
+          assert(listing.price.toString() == PRICE.toString());
+          assert(listing.seller.toString() == deployer.address);
         });
       });
     });
