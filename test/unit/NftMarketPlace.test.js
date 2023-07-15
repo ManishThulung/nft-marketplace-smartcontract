@@ -269,4 +269,49 @@ const { expect, assert } = require("chai");
           assert(listing.price.toString() == NEW_PRICE.toString());
         });
       });
+
+      //withdrawProceeds
+      describe("withdrawProceeds", () => {
+        it("doent allow 0 proceeds to withdraw", async () => {
+          await expect(
+            nftMarketPlace.withdrawProceeds()
+          ).to.be.revertedWithCustomError(
+            nftMarketPlace,
+            "NftMarketPlace__NoProceeds"
+          );
+        });
+        it("withdraws the ETH and updates the prodeeds", async () => {
+          await nftMarketPlace.listItem(basicNft.getAddress(), TOKEN_ID, PRICE);
+          nftMarketPlace = nftMarketPlace.connect(player);
+          await nftMarketPlace.buyItem(basicNft.getAddress(), TOKEN_ID, {
+            value: PRICE,
+          });
+          nftMarketPlace = nftMarketPlace.connect(deployer);
+
+          const deployerProceedsBefore = await nftMarketPlace.getProceeds(
+            deployer.address
+          );
+          // const balanceAfterProceeds = await deployer.getBalance();
+          const deployerBalanceBefore = await ethers.provider.getBalance(
+            deployer.address
+          );
+          console.log(deployerProceedsBefore, "balanceBeforeProceeds");
+          console.log(deployerBalanceBefore, "balanceAfterProceeds");
+          const txResponse = await nftMarketPlace.withdrawProceeds();
+          const txReceipt = await txResponse.wait(1);
+          console.log(txReceipt, "receit");
+          const { gasUsed, gasPrice } = txReceipt;
+          // const gasCost = gasUsed.mul(gasPrice);
+          const gasCost = gasUsed * gasPrice;
+          const deployerBalanceAfter = await ethers.provider.getBalance(
+            deployer.address
+          );
+          console.log(deployerBalanceAfter, "deployerBalanceAfter");
+
+          assert(
+            (deployerBalanceAfter + gasCost).toString() ==
+              (deployerProceedsBefore + deployerBalanceBefore).toString()
+          );
+        });
+      });
     });
