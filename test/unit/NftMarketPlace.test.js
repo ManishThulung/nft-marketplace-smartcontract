@@ -109,4 +109,164 @@ const { expect, assert } = require("chai");
           assert(listing.seller.toString() == deployer.address);
         });
       });
+
+      // cancelListing
+      describe("cancelListing", () => {
+        it("allows only owner to cancel the item", async () => {
+          await nftMarketPlace.listItem(basicNft.getAddress(), TOKEN_ID, PRICE);
+          nftMarketPlace = nftMarketPlace.connect(player);
+          await basicNft.approve(player.address, TOKEN_ID);
+
+          await expect(
+            nftMarketPlace.cancelListing(basicNft.getAddress(), TOKEN_ID)
+          ).to.be.revertedWithCustomError(
+            nftMarketPlace,
+            "NftMarketPlace__NotOwner"
+          );
+        });
+
+        it("only cancel item if it is already listed", async () => {
+          await expect(
+            nftMarketPlace.cancelListing(basicNft.getAddress(), TOKEN_ID)
+          ).to.be.revertedWithCustomError(
+            nftMarketPlace,
+            "NftMarketPlace__NotListed"
+          );
+        });
+
+        it("emits an event after canceling item and remove form list", async () => {
+          await nftMarketPlace.listItem(basicNft.getAddress(), TOKEN_ID, PRICE);
+          expect(
+            await nftMarketPlace.cancelListing(basicNft.getAddress(), TOKEN_ID)
+          ).to.emit("ItemCancelled");
+
+          const listing = await nftMarketPlace.getListing(
+            basicNft.getAddress(),
+            TOKEN_ID
+          );
+          assert(listing.price.toString() == "0");
+        });
+      });
+
+      // buyItem
+      describe("buyItem", () => {
+        it("reverts if the item is not listed", async () => {
+          await expect(
+            nftMarketPlace.buyItem(basicNft.getAddress(), TOKEN_ID)
+          ).to.but.revertedWithCustomError(
+            nftMarketPlace,
+            "NftMarketPlace__NotListed"
+          );
+        });
+
+        it("reverts if the item price item is not met", async () => {
+          await nftMarketPlace.listItem(basicNft.getAddress(), TOKEN_ID, PRICE);
+
+          // await expect(
+          //   nftMarketPlace.buyItem(basicNft.getAddress(), TOKEN_ID, {
+          //     value: ethers.parseEther("0.01"),
+          //   })
+          // )
+          //   .to.be.revertedWithCustomError(
+          //     nftMarketPlace,
+          //     `NftMarketPlace__PriceNotMet(${basicNft.getAddress()}, ${TOKEN_ID}, ${PRICE})`
+          //   )
+          //   .withArgs();
+          await expect(
+            nftMarketPlace.buyItem(basicNft.getAddress(), TOKEN_ID, {
+              value: ethers.parseEther("0.01"),
+            })
+          ).to.be.revertedWithCustomError(
+            nftMarketPlace,
+            `NftMarketPlace__PriceNotMet`
+          );
+        });
+
+        it("transfer the nft to a buyer and updates the internal proceeds", async () => {
+          await nftMarketPlace.listItem(basicNft.getAddress(), TOKEN_ID, PRICE);
+          nftMarketPlace = nftMarketPlace.connect(player);
+
+          expect(
+            await nftMarketPlace.buyItem(basicNft.getAddress(), TOKEN_ID, {
+              value: PRICE,
+            })
+          ).to.emit("ItemBought");
+
+          const newOwner = await basicNft.ownerOf(TOKEN_ID);
+          const proceeds = await nftMarketPlace.getProceeds(deployer.address);
+          assert(newOwner.toString() == player.address);
+          assert(proceeds.toString() == PRICE.toString());
+        });
+      });
+
+      // updateListing
+      describe("updateListing", () => {
+        it("only allows owner to update an item", async () => {
+          const NEW_PRICE = ethers.parseEther("0.02");
+          await nftMarketPlace.listItem(basicNft.getAddress(), TOKEN_ID, PRICE);
+          nftMarketPlace = nftMarketPlace.connect(player);
+          await basicNft.approve(player.address, TOKEN_ID);
+
+          await expect(
+            nftMarketPlace.updateListing(
+              basicNft.getAddress(),
+              TOKEN_ID,
+              NEW_PRICE
+            )
+          ).to.be.revertedWithCustomError(
+            nftMarketPlace,
+            "NftMarketPlace__NotOwner"
+          );
+        });
+
+        it("only updates an item if it is already listed", async () => {
+          const NEW_PRICE = ethers.parseEther("0.02");
+
+          await expect(
+            nftMarketPlace.updateListing(
+              basicNft.getAddress(),
+              TOKEN_ID,
+              NEW_PRICE
+            )
+          ).to.be.revertedWithCustomError(
+            nftMarketPlace,
+            "NftMarketPlace__NotListed"
+          );
+        });
+
+        it("reverts if the new price is zero", async () => {
+          const NEW_PRICE = ethers.parseEther("0");
+          await nftMarketPlace.listItem(basicNft.getAddress(), TOKEN_ID, PRICE);
+
+          await expect(
+            nftMarketPlace.updateListing(
+              basicNft.getAddress(),
+              TOKEN_ID,
+              NEW_PRICE
+            )
+          ).to.be.revertedWithCustomError(
+            nftMarketPlace,
+            "NftMarketPlace_PriceMustBeAboveZero"
+          );
+        });
+
+        it("emits an event after update and sets a new price to an item", async () => {
+          const NEW_PRICE = ethers.parseEther("0.02");
+          await nftMarketPlace.listItem(basicNft.getAddress(), TOKEN_ID, PRICE);
+
+          expect(
+            await nftMarketPlace.updateListing(
+              basicNft.getAddress(),
+              TOKEN_ID,
+              NEW_PRICE
+            )
+          ).to.emit("ItemListed");
+
+          const listing = await nftMarketPlace.getListing(
+            basicNft.getAddress(),
+            TOKEN_ID
+          );
+          assert(listing.price.toString() == NEW_PRICE.toString());
+        });
+      });
     });
