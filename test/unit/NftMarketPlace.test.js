@@ -62,16 +62,16 @@ const { expect, assert } = require("chai");
           ).to.emit("ItemListed");
         });
 
-        // it("exclusively items that haven't been listed", async () => {
-        //   await nftMarketPlace.listItem(basicNft.getAddress(), TOKEN_ID, PRICE);
-        //   // const error = `NftMarketPlace__AlreadyListed(${basicNft.getAddress()}, ${TOKEN_ID})`;
-        //   await expect(
-        //     nftMarketPlace.listItem(basicNft.getAddress(), TOKEN_ID, PRICE)
-        //   ).to.be.revertedWithCustomError(
-        //     nftMarketPlace,
-        //     `NftMarketPlace__AlreadyListed(${basicNft.getAddress()}, ${TOKEN_ID})`
-        //   );
-        // });
+        it("exclusively items that haven't been listed", async () => {
+          await nftMarketPlace.listItem(basicNft.getAddress(), TOKEN_ID, PRICE);
+          // const error = `NftMarketPlace__AlreadyListed(${basicNft.getAddress()}, ${TOKEN_ID})`;
+          await expect(
+            nftMarketPlace.listItem(basicNft.getAddress(), TOKEN_ID, PRICE)
+          ).to.be.revertedWithCustomError(
+            nftMarketPlace,
+            `NftMarketPlace__AlreadyListed`
+          );
+        });
 
         it("allows only owner to list item", async () => {
           nftMarketPlace = nftMarketPlace.connect(player);
