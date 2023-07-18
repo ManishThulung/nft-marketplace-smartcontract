@@ -10,16 +10,26 @@ async function mintAndList() {
 
   console.log("Minting..");
   const mintTx = await basicNft.mintNft();
-  console.log(mintTx, "mintTx");
-  const txReceipt = await mintTx.wait();
-  console.log(txReceipt, "txReceipt");
-  const tokenId = txReceipt.events[0].args.tokenId;
+  const txReceipt = await mintTx.wait(1);
+  // console.log(txReceipt.logs[1], "txReceipt");
+  const { data } = txReceipt?.logs[1];
+  // const tokenId = txReceipt?.events[0]?.args?.tokenId;
+  // const tokenId = ethers.BigNumber.from(data).toNumber();
+  const tokenId = ethers.toQuantity(data);
+  // console.log("tokenId", tokenId);
   console.log("Approving nft...");
 
-  const approvalTx = await basicNft.approve(nftMarketPlace.getAddress, tokenId);
+  const approvalTx = await basicNft.approve(
+    nftMarketPlace.getAddress(),
+    tokenId
+  );
   await approvalTx.wait(1);
   console.log("Listing nft.....");
-  const tx = await nftMarketPlace.listItem(basicNft.getAddress, tokenId, PRICE);
+  const tx = await nftMarketPlace.listItem(
+    basicNft.getAddress(),
+    tokenId,
+    PRICE
+  );
   await tx.wait(1);
   console.log("Listed!");
 }
